@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <title>Data Matrix Scanner</title>
+
+  <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
+    href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+  <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
+    href="https://unpkg.com/normalize.css@8.0.0/normalize.css">
+  <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
+    href="https://unpkg.com/milligram@1.3.0/dist/milligram.min.css">
+</head>
+
+<body>
+
+  <main class="wrapper" style="padding-top:2em">
+
+    <section class="container" id="demo-content">
+
+      <div>
+        <video id="video" width="300" height="200" style="border: 1px solid gray"></video>
+      </div>
+
+      <div id="sourceSelectPanel" style="display:none">
+        <label for="sourceSelect">Change video source:</label>
+        <select id="sourceSelect" style="max-width:400px">
+        </select>
+      </div>
+
+      <label>Raw result:</label>
+      <pre><code id="rawresult"></code></pre>
+
+      <label>Interpreted result:</label>
+      <pre><code id="result"></code></pre>
+
+    </section>
+
+
+  </main>
+
+  <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+  <script type="text/javascript">
+    function tohex(byteArray, newlines) {
+      let hexStr = '';
+      for (let i = 0; i < byteArray.length; i++) {
+          let hex = (byteArray[i] >>> 0).toString(16).toUpperCase();
+          hex = (hex.length === 1 ? '0' + hex : hex);
+          hexStr += '0x' + hex + ' ';
+          if (newlines && (i + 1) % newlines === 0) {
+              hexStr += '\n';
+          }
+      }
+      return hexStr.trim();
+    }
+
+    function getasc(byteArray, first, last) {
+      if (byteArray.length < last) return '';
+
+      let result = '';
+      for (let i = first - 1; i <= last - 1; i++) {
+          result += String.fromCharCode(byteArray[i]);
+      }
+      return result;
+    }
+
+    function gethex(byteArray, first, last) {
+      if (byteArray.length < last) return '';
+
+      return tohex(byteArray.subarray(first - 1, last))
+    }
+
+    function getnum(byteArray, first, last) {
+      if (byteArray.length < last) return 0;
+
+      let result = 0;
+      for (let i = first - 1; i <= last - 1; i++) {
+          result = (result << 8) | byteArray[i];
+      }
+
+      return result;
+    }
+
+    function gethexnum(byteArray, first, last) {
+      return gethex(byteArray, first, last) + ' (' + getnum(byteArray, first, last) + ')'
+    }
+
+    window.addEventListener('load', function () {
+      const codeReader = new ZXing.BrowserMultiFormatReader()
+      
+      function startScan(deviceId) {
+        codeReader.decodeFromVideoDevice(deviceId, 'video', (result, err) => {
+          if (result) {
+            console.log(result)
+
+            const bytes = result.resultMetadata?.get(2)?.[0]
+            if (! bytes) return;
+
+            document.getElementById('rawresult').textContent = tohex(bytes, 8)
+
+            if (getasc(bytes, 1, 4) != 'DEA5') return;
+            
+            // interpretation
+            var str = ''
+              + "Postunternehmen (1-3): '" + getasc(bytes, 1, 3) + "'\n"
+              + "Kennung Frankierart (4): '" + getasc(bytes, 4, 4) + "'\n"
+              + 'Laufende PWZ Nummer (5-9): ' + getnum(bytes, 5, 9) + '\n'
+              + 'Herausgeber (10-14): ' + gethexnum(bytes, 10, 14) + '\n'
+              + 'PWZ Motiv (15): ' +  gethexnum(bytes, 15, 15) + '\n'
+              + 'Druckerei (16): ' +  gethexnum(bytes, 16, 16) + '\n'
+              + 'PWZ Art (17): ' +  gethexnum(bytes, 17, 17) + '\n'
+              + 'Kryptografische information (18-38): ' +  gethex(bytes, 18, 38) + '\n'
+              + 'Datum (39-40): ' +  gethexnum(bytes, 39, 40) + '\n'
+              + 'PWZ Nominale (41-42): ' +  gethexnum(bytes, 41, 42) + '\n'
+              + 'Frei (43-47): ' +  gethex(bytes, 43, 47) + '\n'
+            
+            document.getElementById('result').textContent = str
+          }
+
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err)
+            document.getElementById('rawresult').textContent = err
+          }
+        })
+
+        console.log(`Started continous decode from camera with id ${deviceId}`)
+      }
+
+      codeReader.listVideoInputDevices()
+        .then((videoInputDevices) => {
+          const sourceSelect = document.getElementById('sourceSelect')
+          if (videoInputDevices.length >= 1) {
+            videoInputDevices.forEach((element) => {
+              const sourceOption = document.createElement('option')
+              sourceOption.text = element.label
+              sourceOption.value = element.deviceId
+              sourceSelect.appendChild(sourceOption)
+            })
+
+            console.log(videoInputDevices[0])
+            startScan(videoInputDevices[0].deviceId)
+
+            sourceSelect.onchange = () => {
+              codeReader.reset()
+              startScan(sourceSelect.value)
+            };
+
+            const sourceSelectPanel = document.getElementById('sourceSelectPanel')
+            sourceSelectPanel.style.display = 'block'
+          }
+        })
+        .catch((err) => {
+          console.error(err)
+        })
+    })
+  </script>
+
+</body>
+
+</html>
