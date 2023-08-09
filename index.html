@@ -236,6 +236,8 @@
 
             startScan(initialDeviceId)
 
+            sourceSelect.value = initialDeviceId
+
             sourceSelect.onchange = () => {
               codeReader.reset()
               startScan(sourceSelect.value)
