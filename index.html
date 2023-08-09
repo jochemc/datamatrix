@@ -39,7 +39,10 @@
 
       <label>Interpreted result:</label>
       <pre><code id="result"></code></pre>
-
+      
+      <div style="font-style: italic; padding-bottom: 32px">
+        Behind the colon, the first two values are strings, the rest is in hex. Numbers between brackets are in decimal (big endian interpretation).
+      </div>
     </section>
 
 
@@ -47,16 +50,15 @@
 
   <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
   <script type="text/javascript">
-    function tohex(byteArray, newlines) {
+    function tohex(byteArray) {
       let hexStr = '';
       for (let i = 0; i < byteArray.length; i++) {
           let hex = (byteArray[i] >>> 0).toString(16).toUpperCase();
           hex = (hex.length === 1 ? '0' + hex : hex);
-          hexStr += '0x' + hex + ' ';
-          if (newlines && (i + 1) % newlines === 0) {
-              hexStr += '\n';
-          }
+          // hex = `<span style='background:${i % 2 == 0 ? '#CCC' : '#FFF'}'>` + hex + '</span>'
+          hexStr += hex
       }
+
       return hexStr.trim();
     }
 
@@ -158,6 +160,10 @@
       function startScan(deviceId) {
         codeReader.decodeFromVideoDevice(deviceId, 'video', (result, err) => {
           if (result) {
+            document.getElementById('warn').textContent = ''
+            document.getElementById('rawresult').textContent = ''
+            document.getElementById('result').textContent = ''
+            
             console.log(result)
 
             const bytesOriginal = result.resultMetadata?.get(2)?.[0]
@@ -166,13 +172,14 @@
 
             if (typeof bytes === "string") {
               document.getElementById('warn').textContent = bytes
-              document.getElementById('rawresult').textContent = ''
-              document.getElementById('result').textContent = ''
+              return
             }
 
-            const eq = areEqual(bytesOriginal, bytes)
-            document.getElementById('warn').textContent = eq ? '' : `Not completely base256`
-            document.getElementById('rawresult').textContent = tohex(bytes, 8)
+            if (!areEqual(bytesOriginal, bytes)) {
+              document.getElementById('warn').textContent = `Not completely base256`
+            }
+            
+            document.getElementById('rawresult').innerHTML = tohex(bytes)
 
             if (getasc(bytes, 1, 4) != 'DEA5') return;
             
@@ -190,12 +197,12 @@
               + 'PWZ Nominale (41-42): ' +  gethexnum(bytes, 41, 42) + '\n'
               + 'Frei (43-47): ' +  gethex(bytes, 43, 47) + '\n'
             
-            document.getElementById('result').textContent = str
+            document.getElementById('result').innerHTML = str
           }
 
           if (err && !(err instanceof ZXing.NotFoundException)) {
             console.error(err)
-            document.getElementById('rawresult').textContent = err
+            document.getElementById('warn').textContent = err
           }
         })
 
