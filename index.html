@@ -8,7 +8,7 @@
   <title>Data Matrix Scanner</title>
 
   <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
-    href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+    href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,400,400italic,700,700italic">
   <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
     href="https://unpkg.com/normalize.css@8.0.0/normalize.css">
   <link rel="stylesheet" rel="preload" as="style" onload="this.rel='stylesheet';this.onload=null"
@@ -33,11 +33,10 @@
 
       <button id="clear">clear</button>
 
-      <div id="warn" style="padding-bottom: 10px; padding-top: 2px; font-style: italic; color: red">
-      </div>
+      <div id="warn" style="padding-bottom: 10px; padding-top: 2px; font-style: italic; color: red"></div>
 
-      <label>Raw result:</label>
-      <pre><code id="rawresult"></code></pre>
+      <div id="pwzdec" style="height: 38px; width: 400px; background: #E8E8E8; font-size: 20px; line-height: 38px; margin-bottom: 16px; padding-left: 10px; font-weight: 400"></div>
+      <div id="heraushex" style="height: 38px; width: 400px; background: #E8E8E8; font-size: 20px; line-height: 38px; margin-bottom: 16px; padding-left: 10px; font-weight: 400"></div>
 
       <label>Interpreted result:</label>
       <pre><code id="result"></code></pre>
@@ -45,6 +44,10 @@
       <div style="font-style: italic; padding-bottom: 32px">
         Behind the colon, the first two values are strings, the rest is in hex. Numbers between brackets are in decimal (big endian interpretation).
       </div>
+
+      <label>Raw result:</label>
+      <pre><code id="rawresult"></code></pre>
+
     </section>
 
 
@@ -200,6 +203,9 @@
               + 'Frei (43-47): ' +  gethex(bytes, 43, 47) + '\n'
             
             document.getElementById('result').innerHTML = str
+
+            document.getElementById('pwzdec').innerHTML = getnum(bytes, 5, 9)
+            document.getElementById('heraushex').innerHTML = gethex(bytes, 10, 14)
           }
 
           if (err && !(err instanceof ZXing.NotFoundException)) {
